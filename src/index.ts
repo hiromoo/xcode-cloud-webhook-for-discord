@@ -8,16 +8,33 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/', async (_req, res) => {
-    const { data } = await axios.get(process.env.DISCORD_WEBHOOK_URL as string);
+app.get('/pr', async (_req, res) => {
+    const { data } = await axios.get(process.env.DISCORD_PR_WEBHOOK_URL as string);
+    res.json(data);
+});
+
+app.get('/release', async (_req, res) => {
+    const { data } = await axios.get(process.env.DISCORD_RELEASE_WEBHOOK_URL as string);
     res.json(data);
 });
 
 app.post('/', async (req, res) => {
     const data = req.body;
-    const completionStatus = data.ciBuildRun?.attributes?.completionStatus;
-    if (completionStatus !== 'SUCCEEDED') {
-        console.log('Build failed');
+    const ciBuildRun = data.ciBuildRun;
+    if (!ciBuildRun) {
+        console.log('ciBuildRun not found');
+        res.sendStatus(200);
+        return;
+    }
+    const ciBuildRunAttributes = ciBuildRun.attributes;
+    if (!ciBuildRunAttributes) {
+        console.log('ciBuildRun.attributes not found');
+        res.sendStatus(200);
+        return;
+    }
+    const executionProgress = ciBuildRunAttributes.executionProgress;
+    console.log(`Build execution progress: ${executionProgress}`);
+    if (executionProgress !== 'COMPLETE') {
         res.sendStatus(200);
         return;
     }
@@ -27,9 +44,36 @@ app.post('/', async (req, res) => {
         res.sendStatus(200);
         return;
     }
+    const buildNumber = ciBuildRunAttributes.number;
+    const buildId = ciBuildRun.id;
+    if (!buildId) {
+        console.log('Build ID not found');
+        res.sendStatus(200);
+        return;
+    }
+    const buildEmbeds = [{
+        "title": `ビルド${buildNumber ?? ''}`,
+        "url": `https://appstoreconnect.apple.com/teams/${process.env.XCODE_CLOUD_TEAM_ID}/apps/${appId}/ci/builds/${buildId}/summary`,
+    }];
+    const completionStatus = ciBuildRunAttributes.completionStatus;
+    if (completionStatus !== 'SUCCEEDED') {
+        console.log('Build failed');
+        const discordResponse = await axios.post(
+            `${process.env.DISCORD_RELEASE_WEBHOOK_URL}?wait=true`,
+            {
+                content: '<@&1103653627228336171>\nビルドに失敗しました❌\n詳細を確認してください。',
+                embeds: buildEmbeds
+            }
+        );
+        if (discordResponse.status !== 200) {
+            console.log('Failed to send message');
+        }
+        res.sendStatus(200);
+        return;
+    }
     const appName = data.ciProduct?.attributes?.name ?? 'App';
-    const discordResponse = await axios.post(
-        `${process.env.DISCORD_WEBHOOK_URL}?wait=true`,
+    const discordResponse = ciBuildRunAttributes.isPullRequestBuild ? await axios.post(
+        `${process.env.DISCORD_PR_WEBHOOK_URL}?wait=true`,
         {
             content: '@everyone\nビルドが完了しました！⛏️\nTestFlightよりインストール/アップデートをお願いします！✨',
             embeds: [
@@ -39,11 +83,15 @@ app.post('/', async (req, res) => {
                 }
             ]
         }
+    ) : await axios.post(
+        `${process.env.DISCORD_RELEASE_WEBHOOK_URL}?wait=true`,
+        {
+            content: '<@&1103653627228336171>\nビルドが完了しました！⛏️\nApp Store Connectよりリリースをお願いします！✨',
+            embeds: buildEmbeds
+        }
     );
     if (discordResponse.status !== 200) {
         console.log('Failed to send message');
-        res.sendStatus(200);
-        return;
     }
     res.sendStatus(200);
 });
