@@ -99,8 +99,8 @@ app.post('/', async (req, res) => {
 });
 
 const server = createServer({
-    key: readFileSync('~/keys/private.key'),
-    cert: readFileSync('~/keys/certificate.crt')
+    key: readFileSync(process.env.SSL_KEY_PATH as string),
+    cert: readFileSync(process.env.SSL_CERT_PATH as string)
 }, app);
 
 server.listen(port, () => {
