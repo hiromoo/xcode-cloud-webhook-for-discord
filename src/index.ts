@@ -1,6 +1,8 @@
 import express from 'express';
 import 'dotenv/config';
 import axios from 'axios';
+import { createServer } from 'https';
+import { readFileSync } from 'fs';
 
 const port = 3000;
 
@@ -96,6 +98,11 @@ app.post('/', async (req, res) => {
     res.sendStatus(200);
 });
 
-app.listen(port, () => {
+const server = createServer({
+    key: readFileSync('~/keys/private.key'),
+    cert: readFileSync('~/keys/certificate.crt')
+}, app);
+
+server.listen(port, () => {
     console.log(`App listening on port ${port}`);
 });
