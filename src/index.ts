@@ -20,6 +20,10 @@ app.get('/release', async (_req, res) => {
     res.json(data);
 });
 
+app.get(`/.well-known/pki-validation/${process.env.SSL_VERIFICATION_FILE_PATH}`, (_req, res) => {
+    res.sendFile(process.env.SSL_VERIFICATION_FILE_PATH as string);
+});
+
 app.post('/', async (req, res) => {
     const data = req.body;
     const ciBuildRun = data.ciBuildRun;
