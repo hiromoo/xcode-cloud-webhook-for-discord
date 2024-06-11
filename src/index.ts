@@ -4,7 +4,7 @@ import axios from 'axios';
 import { createServer } from 'https';
 import { readFileSync } from 'fs';
 
-const port = 3000;
+const port = 443;// SSL
 
 const app = express();
 app.use(express.json());
@@ -18,6 +18,11 @@ app.get('/pr', async (_req, res) => {
 app.get('/release', async (_req, res) => {
     const { data } = await axios.get(process.env.DISCORD_RELEASE_WEBHOOK_URL as string);
     res.json(data);
+});
+
+const verivicationFileName = process.env.SSL_VERIFICATION_FILE_PATH!.match(/.+\/(.+)$/)![1] as string;
+app.get(`/.well-known/pki-validation/${verivicationFileName}`, (_req, res) => {
+    res.sendFile(process.env.SSL_VERIFICATION_FILE_PATH as string);
 });
 
 app.post('/', async (req, res) => {

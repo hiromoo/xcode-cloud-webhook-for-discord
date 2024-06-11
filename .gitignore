@@ -2,4 +2,5 @@
 .env
 .vscode
 node_modules
+nohup.out
 out
