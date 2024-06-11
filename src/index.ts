@@ -4,7 +4,7 @@ import axios from 'axios';
 import { createServer } from 'https';
 import { readFileSync } from 'fs';
 
-const port = 3000;
+const port = 80;
 
 const app = express();
 app.use(express.json());
