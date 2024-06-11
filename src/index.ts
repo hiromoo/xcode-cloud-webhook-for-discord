@@ -4,28 +4,33 @@ import axios from 'axios';
 import { createServer } from 'https';
 import { readFileSync } from 'fs';
 
-const port = 443;// SSL
+const httpPort = 80;
+const httpsPort = 443;
 
-const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const httpsApp = express();
+httpsApp.use(express.json());
+httpsApp.use(express.urlencoded({ extended: true }));
 
-app.get('/pr', async (_req, res) => {
+const httpApp = express();
+httpApp.use(express.json());
+httpApp.use(express.urlencoded({ extended: true }));
+
+httpsApp.get('/pr', async (_req, res) => {
     const { data } = await axios.get(process.env.DISCORD_PR_WEBHOOK_URL as string);
     res.json(data);
 });
 
-app.get('/release', async (_req, res) => {
+httpsApp.get('/release', async (_req, res) => {
     const { data } = await axios.get(process.env.DISCORD_RELEASE_WEBHOOK_URL as string);
     res.json(data);
 });
 
 const verivicationFileName = process.env.SSL_VERIFICATION_FILE_PATH!.match(/.+\/(.+)$/)![1] as string;
-app.get(`/.well-known/pki-validation/${verivicationFileName}`, (_req, res) => {
+httpApp.get(`/.well-known/pki-validation/${verivicationFileName}`, (_req, res) => {
     res.sendFile(process.env.SSL_VERIFICATION_FILE_PATH as string);
 });
 
-app.post('/', async (req, res) => {
+httpsApp.post('/', async (req, res) => {
     const data = req.body;
     const ciBuildRun = data.ciBuildRun;
     if (!ciBuildRun) {
@@ -103,11 +108,15 @@ app.post('/', async (req, res) => {
     res.sendStatus(200);
 });
 
-const server = createServer({
+const httpsServer = createServer({
     key: readFileSync(process.env.SSL_KEY_PATH as string),
     cert: readFileSync(process.env.SSL_CERT_PATH as string)
-}, app);
+}, httpsApp);
 
-server.listen(port, () => {
-    console.log(`App listening on port ${port}`);
+httpsServer.listen(httpsPort, () => {
+    console.log(`App listening on port ${httpsPort}`);
+});
+
+httpApp.listen(httpPort, () => {
+    console.log(`App listening on port ${httpPort}`);
 });
