@@ -20,7 +20,8 @@ app.get('/release', async (_req, res) => {
     res.json(data);
 });
 
-app.get(`/.well-known/pki-validation/${process.env.SSL_VERIFICATION_FILE_PATH}`, (_req, res) => {
+const verivicationFileName = process.env.SSL_VERIFICATION_FILE_PATH!.match(/.+\/(.+)$/)![1] as string;
+app.get(`/.well-known/pki-validation/${verivicationFileName}`, (_req, res) => {
     res.sendFile(process.env.SSL_VERIFICATION_FILE_PATH as string);
 });
 
